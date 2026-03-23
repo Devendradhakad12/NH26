@@ -81,6 +81,12 @@
       "relation": "oneToMany",
       "target": "api::ticket.ticket",
       "mappedBy": "assignedTo"
+    },
+    "department": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::department.department",
+      "inversedBy": "agents"
     }
   }
 }
