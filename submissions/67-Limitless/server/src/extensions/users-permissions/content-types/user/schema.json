@@ -90,6 +90,9 @@
     },
     "fullName": {
       "type": "string"
+    },
+    "phone": {
+      "type": "string"
     }
   }
 }

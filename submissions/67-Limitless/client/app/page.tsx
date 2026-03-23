@@ -96,9 +96,9 @@ export default function Home() {
 
             <motion.h1 variants={itemVariants} className="text-7xl md:text-8xl lg:text-9xl font-black text-white tracking-tighter leading-none mb-8">
               SARATHI <br />
-              <span className="bg-gradient-to-b from-white via-white to-white/20 bg-clip-text text-transparent">
+              {/* <span className="bg-gradient-to-b from-white via-white to-white/20 bg-clip-text text-transparent">
                 INTELLIGENCE
-              </span>
+              </span> */}
             </motion.h1>
 {/* @ts-ignore */}
 

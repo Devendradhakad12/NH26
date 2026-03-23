@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Sparkles, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User } from "lucide-react";
+import { Sparkles, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, Phone } from "lucide-react";
 import { strapi } from "@/lib/sdk/sdk";
 
 function validateEmail(email: string) {
@@ -15,6 +15,7 @@ export default function RegisterPage() {
     const router = useRouter();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -26,10 +27,12 @@ export default function RegisterPage() {
         password && password.length < 6 ? "Password must be at least 6 characters." : "";
     const confirmError =
         confirmPassword && confirmPassword !== password ? "Passwords do not match." : "";
+    const phoneError = phone && phone.length < 10 ? "Phone number must be at least 10 digits." : "";
 
     const isValid =
         username.trim().length >= 2 &&
         validateEmail(email) &&
+        phone.length >= 10 &&
         password.length >= 6 &&
         password === confirmPassword;
 
@@ -41,14 +44,14 @@ export default function RegisterPage() {
 
         try {
             // Using the new Strapi SDK directly
-            await strapi.register({
+           const user =  await strapi.register({
                 username: username.trim() + Math.random().toString(36).substring(2, 10),
                 email: email.trim(),
                 password,
             });
 
             // Auto sign-in after successful registration
-            const result: any = await signIn("credentials", {
+           const result = await signIn("credentials", {
                 redirect: false,
                 identifier: email.trim(),
                 password,
@@ -58,14 +61,17 @@ export default function RegisterPage() {
                 router.push("/login?registered=true");
             } else {
 
-                const update = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users`,{
+                console.log(user,'result')
+
+                const update = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users/${user?.user?.id}`,{
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${result?.jwt}`,
+                        "Authorization": `Bearer ${user?.jwt}`,
                     },
                     body: JSON.stringify({
                         fullName: username.trim(),
+                        phone: phone.trim(),
                     }),
                 })
 
@@ -160,6 +166,28 @@ export default function RegisterPage() {
                                 />
                             </div>
                             {emailError && <p className="mt-1 text-xs text-red-400">{emailError}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-slate-300" htmlFor="phone">
+                                Phone Number
+                            </label>
+                            <div className="mt-2 relative rounded-md shadow-sm">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                                    <Phone className="w-5 h-5" />
+                                </div>
+                                <input
+                                    id="phone"
+                                    type="tel"
+                                    className={`block w-full text-white bg-transparent pl-10 px-3 py-3 border rounded-xl focus:ring-2 focus:ring-white focus:border-white sm:text-sm outline-none transition-all placeholder-slate-600 ${phoneError ? 'border-red-500/50' : 'border-slate-800'}`}
+                                    placeholder="1234567890"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    autoComplete="tel"
+                                    disabled={loading}
+                                />
+                            </div>
+                            {phoneError && <p className="mt-1 text-xs text-red-400">{phoneError}</p>}
                         </div>
 
                         <div>
