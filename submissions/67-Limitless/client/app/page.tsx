@@ -57,7 +57,7 @@ export default function Home() {
           
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
-              href="/user/raise-ticket" 
+              href="/user/raise-tickit" 
               className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white text-black font-medium hover:bg-slate-200 transition-all shadow-xl shadow-white/5 flex items-center justify-center gap-2"
             >
               Raise A Ticket
