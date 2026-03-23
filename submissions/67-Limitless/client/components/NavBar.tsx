@@ -29,11 +29,15 @@ export function NavBar() {
           </Link>
           <Link href="/agent/assined-tickits" className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
             <FileText className="w-4 h-4" />
-            Assigned Tickets
+            Assigned
           </Link>
           <Link href="/agent/all-tickits" className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
             <Shield className="w-4 h-4" />
-            All Tickets
+            All
+          </Link>
+          <Link href="/agent/unassined-tickets" className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            <ShieldAlert className="w-4 h-4" />
+            Unassigned
           </Link>
           </>
         );
