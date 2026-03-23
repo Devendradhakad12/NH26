@@ -60,6 +60,13 @@ export default function AdminDashboardPage() {
                             Onboard Agent
                         </Link>
                         <Link 
+                            href="/admin/departments"
+                            className="bg-[#111] text-white font-black px-8 py-4 rounded-2xl border border-slate-800 hover:border-slate-600 transition-all flex items-center gap-3"
+                        >
+                            <Building2 className="w-5 h-5" />
+                            Departments
+                        </Link>
+                        <Link 
                             href="/admin/tickets/assign"
                             className="bg-[#111] text-white font-black px-8 py-4 rounded-2xl border border-slate-800 hover:border-slate-600 transition-all flex items-center gap-3"
                         >
