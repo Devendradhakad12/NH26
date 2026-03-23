@@ -25,7 +25,9 @@ export async function POST(req: Request) {
             headers: { "Authorization": `Bearer ${session.jwt}` }
         });
 
+
         let agents = await agentsRes.json();
+        console.log(agents)
 
         if (!agents || agents.length === 0) {
             const fallbackRes = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users?filters[type][$eq]=agent&populate=assignedTickits`, {
