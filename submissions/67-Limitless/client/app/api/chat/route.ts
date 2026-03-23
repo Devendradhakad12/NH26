@@ -1,62 +1,36 @@
+import { strapi } from "@/lib/sdk/sdk";
 
-const systemPrompt = `You are a helpful assistant.`
+
+const categories = await strapi.find("departments");
+
+const systemPrompt = `You are Sarathi, an intelligent, professional customer support AI for a tech company. 
+Your goal is to resolve user issues rapidly and accurately. Ask clarifying questions if needed.
+If you CAN resolve the issue, answer it fully and politely.
+If you CANNOT resolve the issue after the user has explained it, or if it requires human authorization (like refunds, backend account deletions, physical hardware issues), you MUST escalate it.
+
+if the user is asking for a ticket to be raised, you MUST escalate it.
+
+tip:keep convo concise and to the point. don't repeat yourself. don't be too formal act like a friend who is helping you out.
+
+TO ESCALATE:
+You must reply explaining that you are bringing in a human expert, and at the VERY END of your message, you MUST output a JSON code block with the exact following structure:
+\`\`\`json
+{
+  "_action": "escalate",
+  "title": "A short 4-5 word title of the issue",
+  "summary": "A 2 sentence summary of the entire conversation",
+  "category": "category name here... choose the EXACT closest matching category from the list above",
+  "severity": "Low" | "Medium" | "High" (Choose based on urgency)
+}
+\`\`\`
+IMPORTANT: You MUST strictly use double quotes for all keys and string values so it is completely valid JSON. Do not output this JSON block unless you are actively escalating the ticket in that message.`;
 export async function POST(req: Request) {
     try {
         const { messages, model = 'openai-fast', stream: isStream, personality, provider } = await req.json();
-        // const lastMessage = messages[messages.length - 1]?.content || "";
 
         console.log("Received messages:", personality, model, provider);
 
-        // const imageKeywords = [
-        //   "generate image",
-        //   "create image",
-        //   "make image",
-        //   "draw",
-        //   "picture of",
-        //   "image of",
-        //   "show me",
-        //   "visualize",
-        //   "illustration",
-        //   "artwork",
-        //   "photo of",
-        // ];
-
-        // const isImageRequest = imageKeywords.some((keyword) =>
-        //   lastMessage.toLowerCase().includes(keyword)
-        // );
-
-        // if (isImageRequest) {
-        //   let imagePrompt = lastMessage
-        //     .replace(
-        //       /generate image of|create image of|make image of|draw|picture of|image of|show me|visualize|illustration of|artwork of|photo of/gi,
-        //       ""
-        //     )
-        //     .trim();
-
-        //   if (!imagePrompt) {
-        //     imagePrompt = lastMessage;
-        //   }
-
-        //   console.log("Image request detected:", imagePrompt);
-
-        //   const encodedPrompt = encodeURIComponent(imagePrompt);
-        //   const randomSeed = Math.floor(Math.random() * 100);
-        //   const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?enhance=true&nologo=true&model=kontext&seed=${randomSeed}&token=${process.env.AI_API_TOKEN}&referer=${process.env.SITE_BASE_URL}`;
-
-        //   return Response.json({
-        //     message: `🎨 **Image Generated Successfully!**\n\n![Generated Image](${imageUrl})\n\n**Prompt:** ${imagePrompt}\n\n*AI has visualized your request! ✨*`,
-        //     isImage: true,
-        //     imageUrl: imageUrl,
-        //     imagePrompt: imagePrompt,
-        //   });
-        // }
-
-        // Prepare streaming request to pollinations.ai
-        // https://text.pollinations.ai/openai
-
         const API_URI = "https://gen.pollinations.ai/v1/chat/completions"
-
-        // console.log(typeof API_URI)
 
         const upstreamResponse = await fetch(API_URI, {
             method: "POST",
