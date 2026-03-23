@@ -41,7 +41,7 @@ export default function ChatbotPage() {
     const handleEscalation = async (escalationData: any, entireChat: any[]) => {
         try {
             // Inject strictly selected department into escalation payload
-            const assignedCategory = selectedDepartment?.title || selectedDepartment?.attributes?.title || escalationData.category;
+            const assignedDepartmentId = selectedDepartment?.documentId || selectedDepartment?.attributes?.id || escalationData.category;
 
             const res = await fetch("/api/tickets", {
                 method: "POST",
@@ -49,7 +49,7 @@ export default function ChatbotPage() {
                 body: JSON.stringify({
                     title: escalationData.title,
                     summary: escalationData.summary,
-                    category: assignedCategory,
+                    departmentId: assignedDepartmentId,
                     severity: escalationData.severity,
                     messages: entireChat
                 })

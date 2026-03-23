@@ -9,28 +9,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, summary, description, category, severity, messages } = await req.json();
+    const { title, departmentId, summary, description, category, severity, messages } = await req.json();
 
     try {
-        // Fetch departments that match the category to get the department ID
-        const catsRes = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/departments?filters[title][$eqi]=${category}`, {
-            headers: { "Authorization": `Bearer ${session.jwt}` }
-        });
-        const catsData = await catsRes.json();
 
-        // If department exists, we use it, otherwise we don't strict filter by department
-        let departmentId = null;
-        if (catsData?.data?.length > 0) {
-            departmentId = catsData.data[0].id;
-        }
-
-        // Fetch agents, optionally filtering by department if one was found
         const agentsQueryUrl = new URL(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/users`);
         agentsQueryUrl.searchParams.append("filters[type][$eq]", "agent");
         agentsQueryUrl.searchParams.append("populate", "assignedTickits,department");
 
         if (departmentId) {
-            agentsQueryUrl.searchParams.append("filters[department][id][$eq]", departmentId.toString());
+            agentsQueryUrl.searchParams.append("filters[department][documentId][$eq]", departmentId.toString());
         }
 
         const agentsRes = await fetch(agentsQueryUrl.toString(), {
