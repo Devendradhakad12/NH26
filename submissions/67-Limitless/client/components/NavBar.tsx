@@ -15,9 +15,9 @@ export function NavBar() {
     switch (userType) {
       case "admin":
         return (
-          <Link href="/admin" className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
-            <ShieldAlert className="w-4 h-4" />
-            Admin Panel
+          <Link href="/admin/dashboard" className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors">
+            <Shield className="w-4 h-4 text-blue-400" />
+            Admin Dashboard
           </Link>
         );
       case "agent":
