@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Bot, User, Loader2, CheckCircle2, Building2, Ticket, ArrowRight } from "lucide-react";
+import { 
+    Send, Bot, User, Loader2, CheckCircle2, 
+    Building2, Ticket, ArrowRight, AlertCircle, RefreshCcw 
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "react-toastify";
@@ -26,6 +29,7 @@ export default function ChatbotPage() {
     const [isEscalated, setIsEscalated] = useState(false);
     const [ticketId, setTicketId] = useState<string | null>(null);
     const [guidelines, setGuidelines] = useState<string>("");
+    const [chatError, setChatError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -57,7 +61,6 @@ export default function ChatbotPage() {
 
     const handleEscalation = async (escalationData: any, entireChat: any[]) => {
         try {
-            // Inject strictly selected department into escalation payload
             const assignedDepartmentId = selectedDepartment?.documentId || selectedDepartment?.attributes?.id || escalationData.category;
 
             const res = await fetch("/api/create-ticket", {
@@ -77,17 +80,24 @@ export default function ChatbotPage() {
                 toast.success("Ticket instantly escalated to our human experts.");
                 setIsEscalated(true);
                 setTicketId(resData.ticket?.documentId || resData.ticket?.id || "");
+                return true;
             } else {
-                toast.error("Failed to automatically escalate ticket.");
+                const errData = await res.json().catch(() => ({}));
+                const errMsg = errData.error || "Failed to automatically escalate ticket.";
+                setChatError(`Escalation Error: ${errMsg}`);
+                toast.error(errMsg);
+                return false;
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            setChatError("Connectivity issue during escalation.");
             toast.error("Connectivity issue during escalation.");
+            return false;
         }
     };
 
     const processMessageStream = async (text: string, currentMessages: Message[]) => {
-        // Bulletproof JSON extraction: Identify the main JSON body dynamically.
+        // Bulletproof JSON extraction
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
         
@@ -96,8 +106,6 @@ export default function ChatbotPage() {
             
             if (possibleJson.includes('_action') && possibleJson.includes('escalate')) {
                 try {
-                    // Scrub AI hallucinated syntax like double-double quotes `""key""` or trailing commas
-                    // Also strip stray spaces out of property keys! (e.g. " _action": )
                     const safeJson = possibleJson
                         .replace(/""/g, '"') 
                         .replace(/"\s+([^"]+)"\s*:/g, '"$1":')
@@ -106,20 +114,24 @@ export default function ChatbotPage() {
                     const parsed = JSON.parse(safeJson);
                     
                     if (parsed._action === "escalate") {
-                        // Remove the JSON string and markdown artifacts from the user-facing message
                         const cleanedText = text.substring(0, start).replace(/```\w*\n?/g, '').trim();
                         
                         setMessages(prev => {
                             const newMsg = [...prev];
                             newMsg[newMsg.length - 1].content = cleanedText || "I am escalating this issue to our human experts.";
-                            newMsg.push({
-                                role: "system",
-                                content: `Ticket Escalated: ${parsed.title || 'Untitled'} (Severity: ${parsed.severity || 'Unspecified'})`
-                            });
                             return newMsg;
                         });
                         
-                        await handleEscalation(parsed, currentMessages);
+                        const success = await handleEscalation(parsed, currentMessages);
+                        if (success) {
+                            setMessages(prev => [
+                                ...prev,
+                                {
+                                    role: "system",
+                                    content: `Ticket Escalated: ${parsed.title || 'Untitled'} (Severity: ${parsed.severity || 'Unspecified'})`
+                                }
+                            ]);
+                        }
                         return;
                     }
                 } catch (e) {
@@ -148,13 +160,24 @@ export default function ChatbotPage() {
         setIsLoading(true);
 
         try {
+            setChatError(null);
             const response = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ departmentId: selectedDepartment?.documentId,messages: newMessages, stream: true, guidelines }),
+                body: JSON.stringify({ 
+                    departmentId: selectedDepartment?.documentId,
+                    messages: newMessages, 
+                    stream: true, 
+                    guidelines 
+                }),
             });
 
-            if (!response.body) throw new Error("No response body");
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `Server responded with ${response.status}`);
+            }
+
+            if (!response.body) throw new Error("AI is temporarily unreachable.");
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder("utf-8");
@@ -193,12 +216,10 @@ export default function ChatbotPage() {
                             setMessages((prev) => {
                                 const updated = [...prev];
                                 
-                                // Hide JSON block from the user while it is actively streaming
                                 let displayContent = assistantResponse;
                                 const hideIndex = displayContent.indexOf('```json');
                                 if (hideIndex !== -1) {
                                     if (!displayContent.includes('_action')) {
-                                        // Still generating the JSON, show a nice loader string
                                         displayContent = displayContent.substring(0, hideIndex) + "\n\n*⚙️ Generating Ticket...*";
                                     } else {
                                         displayContent = displayContent.substring(0, hideIndex) + "\n\n*⚙️ Escalating to human experts...*";
@@ -217,9 +238,20 @@ export default function ChatbotPage() {
 
             await processMessageStream(assistantResponse, newMessages);
 
-        } catch (err) {
-            console.error(err);
-            setMessages((prev) => [...prev, { role: "assistant", content: "I am having connectivity issues. Please try again later." }]);
+        } catch (err: any) {
+            console.error("Chat Error:", err);
+            setChatError(err.message || "Something went wrong. Please try again.");
+            
+            // Clean up the empty message bubble if it was added
+            setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last && last.role === "assistant" && last.content === "") {
+                    return prev.slice(0, -1);
+                }
+                return prev;
+            });
+            
+            toast.error(err.message || "Connectivity issue.");
         } finally {
             setIsLoading(false);
         }
@@ -393,6 +425,39 @@ export default function ChatbotPage() {
                                 </div>
                             </motion.div>
                         )}
+                        {chatError && (
+                            <motion.div 
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="flex justify-center"
+                            >
+                                <div className="max-w-md w-full p-6 bg-rose-900/10 border border-rose-500/30 rounded-[2rem] flex flex-col items-center text-center gap-4">
+                                    <div className="w-12 h-12 bg-rose-500/20 text-rose-500 rounded-2xl flex items-center justify-center">
+                                        <AlertCircle className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-white font-bold mb-1">System Interruption</h4>
+                                        <p className="text-xs text-rose-400/80 font-medium leading-relaxed">
+                                            {chatError}
+                                        </p>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const lastUserMsg = messages.filter(m => m.role === "user").pop();
+                                            if (lastUserMsg) {
+                                                setInput(lastUserMsg.content);
+                                                setMessages(prev => prev.slice(0, -1));
+                                                setChatError(null);
+                                            }
+                                        }}
+                                        className="flex items-center gap-2 px-6 py-2.5 bg-rose-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20"
+                                    >
+                                        <RefreshCcw className="w-3.5 h-3.5" />
+                                        Try Again
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
                     <div ref={messagesEndRef} />
                 </div>
@@ -438,7 +503,9 @@ export default function ChatbotPage() {
                             </form>
                             <p className="text-center text-xs text-slate-500 mt-3 font-medium">
                                 Sarathi AI may make mistakes. We automatically flag unresolvable issues for human review.
-                            </p>
+                            {/* <p className="text-center text-[10px] text-slate-600 mt-6 font-black uppercase tracking-[0.2em]">
+                                Sarathi Autonomous Support Engine • v2.0
+                            </p> */}
                         </>
                     )}
                 </div>
